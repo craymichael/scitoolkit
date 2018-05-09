@@ -1,5 +1,5 @@
 # =====================================================================
-# __init__.py - A scitoolkit file
+# logging.py - A scitoolkit file
 # Copyright (C) 2018  Zach Carmichael
 #
 # This program is free software: you can redistribute it and/or modify
@@ -15,10 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *
+from scitoolkit.py23 import *  # py2/3 compatibility
 
-from scitoolkit.system.file_system import (get_tmp_dir, open_tmp, TmpDir,
-                                           get_tmp_file, TmpFile, mkdir_tmp)
+import os
 
-__all__ = ['get_tmp_dir', 'mkdir_tmp', 'TmpDir', 'open_tmp', 'TmpFile',
-           'get_tmp_file']
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'  # TODO

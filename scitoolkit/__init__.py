@@ -19,7 +19,7 @@ from scitoolkit.py23 import *
 
 import lazy_import  # TODO benchmark with and without this module in use...
 
-EXPENSIVE_MODULES = [
+LAZY_MODULES = [
     'numpy',
     'tensorflow',
     'keras',
@@ -27,10 +27,11 @@ EXPENSIVE_MODULES = [
     'scipy',
     'skimage',
     'matplotlib',
-    'seaborn'
+    'seaborn',
+    'joblib'
 ]
 
-for m in EXPENSIVE_MODULES:
+for m in LAZY_MODULES:
     lazy_import.lazy_module(m)
 
 from scitoolkit.np_helper import (get_dtype, get_type, min_int_dtype, min_float_dtype,

@@ -15,13 +15,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *
+from scitoolkit.util.py23 import *
 
-from deap import base, creator
+from deap import base, creator, tools
+from scitoolkit.model_search.base import ModelSearchBase
 
 
-class GeneticAlgorithm(object):
+def _init_individual():
     pass
+
+
+class GeneticAlgorithm(ModelSearchBase):
+    """
+    Attributes:
+        fitness_name
+        fitness_weights
+        See ModelSearchBase for others
+    """
+
+    def __init__(self, *args, population_size=50,
+                 gene_mutation_prob=.1, gene_crossover_prob=.5,
+                 tournament_size=3, num_generations=10,
+                 n_jobs=1, score_on_err='raise', **kwargs):
+        super(GeneticAlgorithm, self).__init__(*args, **kwargs)
+        # Assign appropriate fitness attributes
+        if self.maximize:  # TODO multi-output
+            self.fitness_name = 'FitnessMax'
+            self.fitness_weights = (1.0,)
+        else:
+            self.fitness_name = 'FitnessMin'
+            self.fitness_weights = (-1.0,)
+        # Define fitness type and individual
+        creator.create(self.fitness_name, base.Fitness,
+                       weights=self.fitness_weights)
+        creator.create('Individual', list, est=self.model,
+                       fitness=getattr(creator, self.fitness_name))
+        # Initialize population
+        self._toolbox = base.Toolbox()
+        self._toolbox.register('individual', _init_individual,
+                               creator.Individual)
+        self._toolbox.register('population', tools.initRepeat, list,
+                               self._toolbox.individual)
+        if self.n_jobs != 1:
+            self._toolbox.register('map', self.n_jobs)
+
+    def search(self):
+        pass
 
 # import sklearn.datasets
 # import numpy as np

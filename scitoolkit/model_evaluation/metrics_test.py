@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *  # py2/3 compatibility
+from scitoolkit.util.py23 import *  # py2/3 compatibility
 
 from scitoolkit.platform import test
 from scitoolkit.model_evaluation import metrics

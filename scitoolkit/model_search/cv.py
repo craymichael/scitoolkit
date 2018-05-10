@@ -15,14 +15,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *  # py2/3 compatibility
+from scitoolkit.util.py23 import *  # py2/3 compatibility
 
 from sklearn.model_selection import (RepeatedKFold, RepeatedStratifiedKFold,
-                                     check_cv)
+                                     check_cv, train_test_split)
 from sklearn.utils.multiclass import type_of_target
 
-from scitoolkit.np_helper import is_int
-from scitoolkit.py_helper import is_str
+from scitoolkit.util.np_helper import is_int
+from scitoolkit.util.py_helper import is_str
+
+__all__ = ['get_cv', 'train_test_split']
 
 
 def get_cv(cv=3, n_repeats=None, y=None, classification=None,
@@ -30,26 +32,25 @@ def get_cv(cv=3, n_repeats=None, y=None, classification=None,
     """Input checker utility for building a cross-validator
 
     Args:
-        cv: int, cross-validation generator or an iterable
-            Determines the cross-validation splitting strategy.
-            Possible inputs for cv are:
-            - None, to use the default 3-fold cross-validation,
-            - integer, to specify the number of folds.
-            - An object to be used as a cross-validation generator.
-            - An iterable yielding train/test splits.
-            For integer/None inputs, if classification is True and ``y`` is
-            either binary or multiclass, `StratifiedKFold` is used. In all
-            other cases, `KFold` is used.
-        n_repeats:
-            The number of times to repeat splits.
-        y:  The target variable for supervised learning problems.
+        cv:        int, cross-validation generator or an iterable
+                   Determines the cross-validation splitting strategy.
+                   Possible inputs for cv are:
+                   - None, to use the default 3-fold cross-validation,
+                   - integer, to specify the number of folds.
+                   - An object to be used as a cross-validation generator.
+                   - An iterable yielding train/test splits.
+                   For integer/None inputs, if classification is True and
+                   `y` is either binary or multiclass, `StratifiedKFold` is
+                   used. In all other cases, `KFold` is used.
+        n_repeats: The number of times to repeat splits.
+        y:         The target variable for supervised learning problems.
         classification:
-            Whether the task is a classification task, in which case stratified
-            KFold will be used. Infers based on `y` if specified and
-            `classification` is None.
+                   Whether the task is a classification task, in which case
+                   stratified KFold will be used. Infers based on `y` if
+                   specified and `classification` is None.
         random_state:
-            Random state to be used to generate random state for each
-            repetition.
+                   Random state to be used to generate random state for each
+                   repetition.
 
     Returns:
         A cross-validator instance that generates the train/test splits via

@@ -1,5 +1,5 @@
 # =====================================================================
-# multivariate.py - A scitoolkit file
+# parallel.py - A scitoolkit file
 # Copyright (C) 2018  Zach Carmichael
 #
 # This program is free software: you can redistribute it and/or modify
@@ -17,5 +17,9 @@
 # =====================================================================
 from scitoolkit.util.py23 import *
 
-# TODO PCA reduction visualize...
-# TODO also T-SNE
+from sklearn.externals.joblib import Parallel, delayed
+
+
+def map(func, n_jobs=1, *iterables):
+    return Parallel(n_jobs=n_jobs)(delayed(func)(*args)
+                                   for args in zip(iterables))

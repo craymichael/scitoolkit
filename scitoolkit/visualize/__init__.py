@@ -15,13 +15,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *
+from scitoolkit.util.py23 import *
 
 from six import itervalues
 from itertools import chain
 import seaborn as sns
 
-from scitoolkit.py_helper import get_module_api, func_arg_names
+from scitoolkit.util.py_helper import get_module_api, func_arg_names
 
 sns.set(color_codes=True)  # TODO do this in more appropriate place...
 

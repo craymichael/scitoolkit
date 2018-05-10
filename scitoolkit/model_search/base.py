@@ -15,12 +15,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *
+from scitoolkit.util.py23 import *
 
 import numpy as np
 import six
-from abc import ABCMeta
-from joblib import Parallel, delayed, cpu_count, Memory, dump, load
+import abc
+from sklearn.externals.joblib import Parallel, delayed, cpu_count, Memory, dump, load, pool
 
 
 class ParamSpace(object):
@@ -28,18 +28,24 @@ class ParamSpace(object):
 
     def __init__(self):
         pass
-    # TODO categorical/continuous parameters
+    # TODO define categorical/continuous parameters
 
 
-class ModelSearch(six.with_metaclass(ABCMeta, object)):
+class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
     """"""
+    # TODO gen random states and save for split reproducability, etc.
+    # TODO take in list of collections (pickleable)
 
-    def __init__(self, model, param_space, population_size=50,
-                 gene_mutation_prob=.1, gene_crossover_prob=.5,
-                 tournament_size=3, num_generations=10,
-                 n_jobs=1, score_on_err='raise', iid=True):
-        pass
+    def __init__(self, model, hparam_space, n_jobs=1, iid=True, maximize=True):
+        # TODO move iid to scoring methodology? cv-only param I think...
+        self.model = model
+        self.maximize = maximize
+        self.best_model = None
+        self.best_hparams = None
+        self.best_score = None
+        self.n_jobs = n_jobs
 
+    @abc.abstractmethod
     def _build_model(self):
         pass
 

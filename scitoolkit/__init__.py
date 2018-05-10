@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *
+from scitoolkit.util.py23 import *
 
 import lazy_import  # TODO benchmark with and without this module in use...
 
@@ -27,18 +27,15 @@ LAZY_MODULES = [
     'scipy',
     'skimage',
     'matplotlib',
-    'seaborn',
-    'joblib'
+    'seaborn'
 ]
 
 for m in LAZY_MODULES:
     lazy_import.lazy_module(m)
 
-from scitoolkit.np_helper import (get_dtype, get_type, min_int_dtype, min_float_dtype,
-                                  min_uint_dtype, min_complex_dtype, min_dtype, is_complex,
-                                  is_float, is_int, is_uint)
-from scitoolkit.py_helper import (is_str, is_py3, is_py2, filter_unused_kwargs,
-                                  can_reverse_dict, reverse_dict, hashable)
+from scitoolkit.util.np_helper import (get_dtype, get_type, min_int_dtype, min_float_dtype,
+                                       min_uint_dtype, min_complex_dtype, min_dtype, is_complex,
+                                       is_float, is_int, is_uint)
 from scitoolkit.plot import (plot_pr_curve, plot_roc_curve, plot_wrapper,
                              gen_good_random_cmap)
 from scitoolkit.model_evaluation.metrics_helper import eval_metrics, eval_metric

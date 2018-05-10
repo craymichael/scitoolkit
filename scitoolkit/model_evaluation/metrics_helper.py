@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from scitoolkit.py23 import *  # py2/3 compatibility
+from scitoolkit.util.py23 import *  # py2/3 compatibility
 from six import iteritems
 
 # sklearn classification, regression, multi-label, clustering,
@@ -33,7 +33,7 @@ from multiprocessing import cpu_count  # TODO use joblib?
 import numpy as np  # NumPy
 from functools import wraps
 
-from scitoolkit.py_helper import is_str, reverse_dict, filter_unused_kwargs
+from scitoolkit.util.py_helper import is_str, reverse_dict, filter_unused_kwargs
 from scitoolkit.model_evaluation.metrics import mean_per_class_accuracy
 
 # Classification

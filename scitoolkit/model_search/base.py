@@ -36,7 +36,8 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
     # TODO gen random states and save for split reproducability, etc.
     # TODO take in list of collections (pickleable)
 
-    def __init__(self, model, hparam_space, n_jobs=1, iid=True, maximize=True):
+    def __init__(self, model, hparam_space, n_jobs=1, iid=True,
+                 maximize=True, verbose=0):
         # TODO move iid to scoring methodology? cv-only param I think...
         self.model = model
         self.maximize = maximize
@@ -44,6 +45,7 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
         self.best_hparams = None
         self.best_score = None
         self.n_jobs = n_jobs
+        self.verbose = verbose
 
     @abc.abstractmethod
     def _build_model(self):

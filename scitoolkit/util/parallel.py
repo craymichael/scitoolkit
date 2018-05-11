@@ -23,3 +23,4 @@ from sklearn.externals.joblib import Parallel, delayed
 def map(func, *iterables, n_jobs=1, verbose=0):
     return Parallel(n_jobs=n_jobs, verbose=verbose)(delayed(func)(*args)
                                                     for args in zip(iterables))
+

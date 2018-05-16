@@ -20,9 +20,114 @@ from scitoolkit.util.py23 import *
 import os
 from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
+from dateutil import parser as date_parser
+from scitoolkit.util.py_helper import is_str
 
 __all__ = ['get_tmp_dir', 'mkdir_tmp', 'TmpDir', 'open_tmp', 'TmpFile',
-           'get_tmp_file']
+           'get_tmp_file', 'join', 'get_most_recent_in_dir',
+           'get_most_recent_k_in_dir', 'EmptyDirError']
+
+
+class EmptyDirError(Exception):
+    pass
+
+
+def join(*args):
+    filename = os.path.join(*args)
+    dirname = os.path.dirname(filename)
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+    return filename
+
+
+def get_most_recent_in_dir(dirname, delim='_', ext=None, raise_=False,
+                           return_fns=False):
+    ret = get_most_recent_k_in_dir(dirname, k=1, delim=delim, ext=ext,
+                                   raise_=raise_, return_fns=return_fns)
+    if return_fns:
+        if len(ret[0]):
+            return ret[0][0], ret[1]
+        else:
+            return None, ret[1]
+    else:
+        if len(ret):
+            return ret[0]
+        else:
+            return None
+
+
+def get_most_recent_k_in_dir(dirname, k, delim='_', ext=None, raise_=False,
+                             strict=False, return_fns=False):
+    if is_str(dirname):
+        # Note this checks files only.
+        if not raise_ and not os.path.isdir(dirname):
+            return None
+
+        dirs = os.listdir(dirname)  # Exception can be raised here
+
+        if not dirs:
+
+            if raise_:
+                raise EmptyDirError('Directory "{}" cannot be '
+                                    'empty.'.format(dirname))
+            else:
+                return None
+
+        filenames = os.listdir(dirname)
+    else:
+        # Assume iterable
+        filenames = dirname
+
+    fn_dt_dict = {}
+
+    for filename in filenames:
+
+        if os.path.isfile(filename):
+
+            filename_raw = filename
+
+            if ext is not None:
+                suffix = '.' + ext
+                if not filename.endswith(suffix):
+                    continue
+
+                filename = filename[:-len(suffix)]
+
+            if delim is not None:
+                split = filename.rsplit(delim, 1)
+
+                if len(split) != 2:
+                    continue
+
+                filename = split[1]
+
+            try:
+                dt = date_parser.parse(filename)
+            except ValueError:
+                continue
+
+            fn_dt_dict[filename_raw] = dt
+
+    if not fn_dt_dict and raise_:
+        raise EmptyDirError(
+            'Directory "{}" does not contain any files with {}{}a valid '
+            'timestamp.'.format(dirname,
+                                'extension "{}" and '.format(ext) if ext else '',
+                                'delimiter "{}" and '.format(delim) if delim else ''))
+
+    most_recent_fns = sorted(fn_dt_dict, key=fn_dt_dict.get, reverse=True)[:k]
+
+    if strict and len(most_recent_fns) != k:
+        raise ValueError(
+            'Directory "{}" does not contain {} files with {}{}a valid '
+            'timestamp.'.format(dirname, k,
+                                'extension "{}" and '.format(ext) if ext else '',
+                                'delimiter "{}" and '.format(delim) if delim else ''))
+
+    if return_fns:
+        return most_recent_fns, list(fn_dt_dict.keys())
+    else:
+        return most_recent_fns
 
 
 def get_tmp_dir(suffix='', prefix='tmp', dir=None):

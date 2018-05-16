@@ -72,6 +72,11 @@ def func_arg_names(func):
     return all_arg_names
 
 
+def get_default_args(func):
+    args, varargs, keywords, defaults, _, _, _ = getfullargspec(func)
+    return dict(zip(args[-len(defaults):], defaults))
+
+
 def filter_unused_kwargs(func, kwargs):
     all_arg_names = func_arg_names(func)
     filtered = {}

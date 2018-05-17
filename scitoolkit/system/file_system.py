@@ -18,6 +18,7 @@
 from scitoolkit.util.py23 import *
 
 import os
+import re
 from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
 from dateutil import parser as date_parser
@@ -25,7 +26,8 @@ from scitoolkit.util.py_helper import is_str
 
 __all__ = ['get_tmp_dir', 'mkdir_tmp', 'TmpDir', 'open_tmp', 'TmpFile',
            'get_tmp_file', 'join', 'get_most_recent_in_dir',
-           'get_most_recent_k_in_dir', 'EmptyDirError']
+           'get_most_recent_k_in_dir', 'EmptyDirError', 'valid_filename']
+PATH_REGEX = re.compile(r'[\\/:\"*?<>|]+')
 
 
 class EmptyDirError(Exception):
@@ -38,6 +40,14 @@ def join(*args):
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
     return filename
+
+
+def valid_filename(filename):
+    dirname = os.path.dirname(filename)
+    basename = os.path.basename(filename)
+    # Remove invalid chars (Windows regex)
+    basename = PATH_REGEX.sub('_', basename)
+    return os.path.join(dirname, basename)
 
 
 def get_most_recent_in_dir(dirname, delim='_', ext=None, raise_=False,

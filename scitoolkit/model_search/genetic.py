@@ -19,6 +19,7 @@ from scitoolkit.util.py23 import *
 
 from deap import base, creator, tools, algorithms
 import numpy as np
+import random
 
 from scitoolkit.model_search.base import ModelSearchBase
 from scitoolkit.util.parallel import map
@@ -34,6 +35,38 @@ DEFAULT_GA_PARAMS = dict(
 
 def _init_individual():
     pass
+
+
+def _mut_individual_grid(individual, up, indpb):
+    # Perform for both categorical/continuous
+    for i, up, rn in zip(range(len(up)), up, [random.random() for _ in range(len(up))]):
+        if rn < indpb:
+            individual[i] = random.randint(0, up)
+    return individual,
+
+
+def _cx_individual_grid(ind1, ind2, indpb, gene_type):
+    for i, gt, rn in zip(range(len(ind1)), gene_type, [random.random()
+                                                       for _ in range(len(ind1))]):
+        if rn > indpb:
+            continue
+        if gt is param_types.Categorical:
+            ind1[i], ind2[i] = ind2[i], ind1[i]
+        else:
+            # Case when parameters are numerical
+            if ind1[i] <= ind2[i]:
+                ind1[i] = random.randint(ind1[i], ind2[i])
+                ind2[i] = random.randint(ind1[i], ind2[i])
+            else:
+                ind1[i] = random.randint(ind2[i], ind1[i])
+                ind2[i] = random.randint(ind2[i], ind1[i])
+
+    return ind1, ind2
+
+
+def _individual_to_hparams_grid(individual, name_values):
+    return {name: values[gene]
+            for gene, (name, values) in zip(individual, name_values)}
 
 
 def eaSimple1Gen(population, toolbox, cxpb, mutpb, gen):
@@ -230,7 +263,10 @@ class GeneticAlgorithm(ModelSearchBase):
                  gene_mutation_prob=.1, gene_crossover_prob=.5,
                  tournament_size=3, num_generations=10,
                  n_jobs=1, score_on_err='raise', ga_func=eaSimple1Gen,
-                 **kwargs):
+                 grid=True, **kwargs):
+        if not grid:
+            raise NotImplementedError
+
         super(GeneticAlgorithm, self).__init__(*args, **kwargs)
 
         # GA params
@@ -240,6 +276,7 @@ class GeneticAlgorithm(ModelSearchBase):
         self.n_jobs = n_jobs
         self.gene_mutation_prob = gene_mutation_prob
         self.gene_crossover_prob = gene_crossover_prob
+        self.grid = grid
         # Wrap ga_func
         ga_func_args = {}
         ga_func_defaults = get_default_args(ga_func)
@@ -301,11 +338,12 @@ class GeneticAlgorithm(ModelSearchBase):
                                verbose=self.verbose, error_score=self.error_score,
                                fit_params=self.fit_params, score_cache=self.score_cache)
 
-        self._toolbox.register('mate', _cxIndividual, indpb=self.gene_crossover_prob,
+        self._toolbox.register('mate', _cx_individual_grid, indpb=self.gene_crossover_prob,
                                gene_type=self.gene_type)
 
-        self._toolbox.register('mutate', _mutIndividual, indpb=self.gene_mutation_prob,
+        self._toolbox.register('mutate', _mut_individual_grid, indpb=self.gene_mutation_prob,
                                up=maxints)
+
         self._toolbox.register('select', tools.selTournament,
                                tournsize=self.tournament_size)
 
@@ -368,7 +406,8 @@ class GeneticAlgorithm(ModelSearchBase):
                           ext='pkl', timestamp=True)
 
         best_score_ = self._hof[0].fitness.values[0]
-        best_params_ = _individual_to_params(self._hof[0], name_values)
+        best_params_ = _individual_to_hparams_grid(self._hof[0], name_values)
+
         if self.verbose:
             print('Best individual is: {}\nwith fitness: {}'.format(
                 best_params_, best_score_))

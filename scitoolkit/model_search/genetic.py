@@ -22,6 +22,7 @@ import numpy as np
 import random
 
 from scitoolkit.model_search.base import ModelSearchBase
+from scitoolkit.model_evaluation.eval import train_and_eval
 from scitoolkit.util.parallel import map
 from scitoolkit.util.py_helper import func_arg_names, get_default_args
 
@@ -33,26 +34,25 @@ DEFAULT_GA_PARAMS = dict(
 )
 
 
-def _init_individual():
-    pass
+def _init_individual(cls, hparam_space):
+    return cls(random.randint(0, len(hp) - 1) for hp in hparam_space)
 
 
-def _mut_individual_grid(individual, up, indpb):
+def _mut_individual_grid(individual, hparam_space, indpb):
     # Perform for both categorical/continuous
-    for i, up, rn in zip(range(len(up)), up, [random.random() for _ in range(len(up))]):
-        if rn < indpb:
-            individual[i] = random.randint(0, up)
-    return individual,
+    for i, hp in enumerate(hparam_space):
+        if random.random() <= indpb:
+            individual[i] = random.randint(0, len(hp) - 1)
+    return individual,  # Tuple
 
 
-def _cx_individual_grid(ind1, ind2, indpb, gene_type):
-    for i, gt, rn in zip(range(len(ind1)), gene_type, [random.random()
-                                                       for _ in range(len(ind1))]):
-        if rn > indpb:
+def _cx_individual_grid(ind1, ind2, hparam_space, indpb):
+    for i, hp in enumerate(hparam_space):
+        if random.random() > indpb:
             continue
-        if gt is param_types.Categorical:
+        if hp.type == 'categorical':
             ind1[i], ind2[i] = ind2[i], ind1[i]
-        else:
+        elif hp.type == 'continuous':
             # Case when parameters are numerical
             if ind1[i] <= ind2[i]:
                 ind1[i] = random.randint(ind1[i], ind2[i])
@@ -60,13 +60,15 @@ def _cx_individual_grid(ind1, ind2, indpb, gene_type):
             else:
                 ind1[i] = random.randint(ind2[i], ind1[i])
                 ind2[i] = random.randint(ind2[i], ind1[i])
+        else:
+            raise ValueError('Unknown HP type: {}'.format(hp.type))
 
     return ind1, ind2
 
 
-def _individual_to_hparams_grid(individual, name_values):
-    return {name: values[gene]
-            for gene, (name, values) in zip(individual, name_values)}
+def _individual_to_hparams_grid(individual, hparam_space):
+    # Convert from indices to param dict to pass to model
+    return hparam_space.get_hparams(individual)
 
 
 def eaSimple1Gen(population, toolbox, cxpb, mutpb, gen):
@@ -259,25 +261,24 @@ class GeneticAlgorithm(ModelSearchBase):
         See ModelSearchBase for others
     """
 
-    def __init__(self, *args, population_size=50,
-                 gene_mutation_prob=.1, gene_crossover_prob=.5,
-                 tournament_size=3, num_generations=10,
-                 n_jobs=1, score_on_err='raise', ga_func=eaSimple1Gen,
-                 grid=True, **kwargs):
-        if not grid:
-            raise NotImplementedError
+    def __init__(self, *args, **kwargs):
 
         super(GeneticAlgorithm, self).__init__(*args, **kwargs)
 
         # GA params
-        self.population_size = population_size
-        self.num_generations = num_generations
-        self.tournament_size = tournament_size
-        self.n_jobs = n_jobs
-        self.gene_mutation_prob = gene_mutation_prob
-        self.gene_crossover_prob = gene_crossover_prob
-        self.grid = grid
+        self.population_size = kwargs.get('population_size', 50)
+        self.gene_mutation_prob = kwargs.get('gene_mutation_prob', 0.1)
+        self.gene_crossover_prob = kwargs.get('gene_crossover_prob', 0.5)
+        self.tournament_size = kwargs.get('tournament_size', 3)
+        self.num_generations = kwargs.get('num_generations', 10)
+        self.n_jobs = kwargs.get('n_jobs', 1)
+        self.grid = kwargs.get('grid', True)
+        if not self.grid:
+            raise NotImplementedError
+        # TODO i forgot what this is...
+        self.score_on_err = kwargs.get('score_on_err', 'raise')
         # Wrap ga_func
+        ga_func = kwargs.get('ga_func', eaSimple1Gen)
         ga_func_args = {}
         ga_func_defaults = get_default_args(ga_func)
         for arg_name in func_arg_names(ga_func):
@@ -299,7 +300,6 @@ class GeneticAlgorithm(ModelSearchBase):
             return ga_func(population, toolbox, gen=gen, **ga_func_args)
 
         self._ga_func = ga_func_wrapped
-        self._score_on_err = score_on_err  # TODO i forgot what this is...
         # Init values
         self.start_gen = 0
         self.gen = 0  # Running var
@@ -321,8 +321,10 @@ class GeneticAlgorithm(ModelSearchBase):
     def _init_toolbox(self):
         # Initialize population
         self._toolbox = base.Toolbox()
+        # noinspection PyUnresolvedReferences
         self._toolbox.register('individual', _init_individual,
                                creator.Individual)
+        # noinspection PyUnresolvedReferences
         self._toolbox.register('population', tools.initRepeat, list,
                                self._toolbox.individual)
         if self.n_jobs != 1:
@@ -332,21 +334,24 @@ class GeneticAlgorithm(ModelSearchBase):
 
             self._toolbox.register('map', _map_func)
 
-        self._toolbox.register('evaluate', _evalFunction,
-                               name_values=name_values, X=X, y=y,
-                               scorer=self.scorer_, cv=cv, iid=self.iid,
-                               verbose=self.verbose, error_score=self.error_score,
-                               fit_params=self.fit_params, score_cache=self.score_cache)
+        self._toolbox.register('evaluate', train_and_eval, X=X, y=y,  # TODO...
+                               model=self.model, train_func='train',
+                               test_func='test', cv=self.cv, iid=self.iid,
+                               return_train_score=False, metrics=None,
+                               target_metric=None)  # TODO metrics...
 
-        self._toolbox.register('mate', _cx_individual_grid, indpb=self.gene_crossover_prob,
-                               gene_type=self.gene_type)
+        self._toolbox.register('mate', _cx_individual_grid,
+                               indpb=self.gene_crossover_prob,
+                               hparam_space=self.hparam_space)
 
-        self._toolbox.register('mutate', _mut_individual_grid, indpb=self.gene_mutation_prob,
-                               up=maxints)
+        self._toolbox.register('mutate', _mut_individual_grid,
+                               indpb=self.gene_mutation_prob,
+                               hparam_space=self.hparam_space)
 
         self._toolbox.register('select', tools.selTournament,
                                tournsize=self.tournament_size)
 
+        # noinspection PyUnresolvedReferences
         self._pop = self._toolbox.population(n=self.population_size)
         self._hof = tools.HallOfFame(1)
 
@@ -369,7 +374,7 @@ class GeneticAlgorithm(ModelSearchBase):
     def _search(self):
         if self.verbose:
             print('--- Evolve in {0} possible combinations ---'.format(
-                np.prod(np.array(maxints) + 1)))
+                np.prod(np.asarray([len(hp) for hp in self.hparam_space]))))
 
         # Init logbook
         logbook = tools.Logbook()
@@ -385,6 +390,7 @@ class GeneticAlgorithm(ModelSearchBase):
 
             # Evaluate the individuals with an invalid fitness
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+            # noinspection PyUnresolvedReferences
             fitnesses = self._toolbox.map(self._toolbox.evaluate, invalid_ind)
             for ind, fit in zip(invalid_ind, fitnesses):
                 ind.fitness.values = fit
@@ -406,7 +412,8 @@ class GeneticAlgorithm(ModelSearchBase):
                           ext='pkl', timestamp=True)
 
         best_score_ = self._hof[0].fitness.values[0]
-        best_params_ = _individual_to_hparams_grid(self._hof[0], name_values)
+        best_params_ = _individual_to_hparams_grid(self._hof[0],
+                                                   self.hparam_space)
 
         if self.verbose:
             print('Best individual is: {}\nwith fitness: {}'.format(

@@ -24,10 +24,10 @@ from shutil import rmtree
 from dateutil import parser as date_parser
 from scitoolkit.util.py_helper import is_str
 
+PATH_REGEX = re.compile(r'[\\/:\"*?<>|]+')
 __all__ = ['get_tmp_dir', 'mkdir_tmp', 'TmpDir', 'open_tmp', 'TmpFile',
            'get_tmp_file', 'join', 'get_most_recent_in_dir',
            'get_most_recent_k_in_dir', 'EmptyDirError', 'valid_filename']
-PATH_REGEX = re.compile(r'[\\/:\"*?<>|]+')
 
 
 class EmptyDirError(Exception):

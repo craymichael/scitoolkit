@@ -21,9 +21,12 @@ from deap import base, creator, tools, algorithms
 import numpy as np
 import random
 
+import networkx
+import matplotlib.pyplot as plt  # TODO plt...
+
 from scitoolkit.model_search.base import ModelSearchBase
 from scitoolkit.model_evaluation.eval import train_and_eval
-from scitoolkit.util.parallel import map
+from scitoolkit.util.parallel import map_jobs
 from scitoolkit.util.py_helper import func_arg_names, get_default_args
 
 DEFAULT_GA_PARAMS = dict(
@@ -262,23 +265,20 @@ class GeneticAlgorithm(ModelSearchBase):
     """
 
     def __init__(self, *args, **kwargs):
-
-        super(GeneticAlgorithm, self).__init__(*args, **kwargs)
-
         # GA params
-        self.population_size = kwargs.get('population_size', 50)
-        self.gene_mutation_prob = kwargs.get('gene_mutation_prob', 0.1)
-        self.gene_crossover_prob = kwargs.get('gene_crossover_prob', 0.5)
-        self.tournament_size = kwargs.get('tournament_size', 3)
-        self.num_generations = kwargs.get('num_generations', 10)
-        self.n_jobs = kwargs.get('n_jobs', 1)
-        self.grid = kwargs.get('grid', True)
+        self.population_size = kwargs.pop('population_size', 50)
+        self.gene_mutation_prob = kwargs.pop('gene_mutation_prob', 0.1)
+        self.gene_crossover_prob = kwargs.pop('gene_crossover_prob', 0.5)
+        self.tournament_size = kwargs.pop('tournament_size', 3)
+        self.num_generations = kwargs.pop('num_generations', 10)
+        self.n_jobs = kwargs.pop('n_jobs', 1)
+        self.grid = kwargs.pop('grid', True)
         if not self.grid:
             raise NotImplementedError
         # TODO i forgot what this is...
-        self.score_on_err = kwargs.get('score_on_err', 'raise')
+        self.score_on_err = kwargs.pop('score_on_err', 'raise')
         # Wrap ga_func
-        ga_func = kwargs.get('ga_func', eaSimple1Gen)
+        ga_func = kwargs.pop('ga_func', eaSimple1Gen)
         ga_func_args = {}
         ga_func_defaults = get_default_args(ga_func)
         for arg_name in func_arg_names(ga_func):
@@ -300,6 +300,9 @@ class GeneticAlgorithm(ModelSearchBase):
             return ga_func(population, toolbox, gen=gen, **ga_func_args)
 
         self._ga_func = ga_func_wrapped
+
+        super(GeneticAlgorithm, self).__init__(*args, **kwargs)
+
         # Init values
         self.start_gen = 0
         self.gen = 0  # Running var
@@ -313,7 +316,7 @@ class GeneticAlgorithm(ModelSearchBase):
         # Define fitness type and individual
         creator.create(self.fitness_name, base.Fitness,
                        weights=self.fitness_weights)
-        creator.create('Individual', list, est=self.model,
+        creator.create('Individual', list,
                        fitness=getattr(creator, self.fitness_name))
         # Init toolbox
         self._init_toolbox()
@@ -323,22 +326,17 @@ class GeneticAlgorithm(ModelSearchBase):
         self._toolbox = base.Toolbox()
         # noinspection PyUnresolvedReferences
         self._toolbox.register('individual', _init_individual,
-                               creator.Individual)
+                               creator.Individual,
+                               hparam_space=self.hparam_space)
         # noinspection PyUnresolvedReferences
         self._toolbox.register('population', tools.initRepeat, list,
                                self._toolbox.individual)
         if self.n_jobs != 1:
             def _map_func(*_args, **_kwargs):
-                return map(*_args, n_jobs=self.n_jobs, verbose=self.verbose,
-                           **_kwargs)
+                return map_jobs(*_args, n_jobs=self.n_jobs,
+                                verbose=self.verbose, **_kwargs)
 
             self._toolbox.register('map', _map_func)
-
-        self._toolbox.register('evaluate', train_and_eval, X=X, y=y,  # TODO...
-                               model=self.model, train_func='train',
-                               test_func='test', cv=self.cv, iid=self.iid,
-                               return_train_score=False, metrics=None,
-                               target_metric=None)  # TODO metrics...
 
         self._toolbox.register('mate', _cx_individual_grid,
                                indpb=self.gene_crossover_prob,
@@ -371,7 +369,33 @@ class GeneticAlgorithm(ModelSearchBase):
         hist.update(self._pop)
         self._hist = hist
 
-    def _search(self):
+    def _search(self, X, y):
+        def _train_and_eval_wrapped(individual, *args, **kwargs):
+            hparams = _individual_to_hparams_grid(individual, self.hparam_space)
+            model = self.model(**hparams)
+            try:
+                score = train_and_eval(*args, model=model, **kwargs)
+            # TODO score_on_err and shouldn't this be in base.py somewhere...
+            except np.linalg.linalg.LinAlgError:  # TODO more exceptions...
+                # TODO log exceptions...
+                if self.maximize:
+                    score = -np.inf
+                else:
+                    score = np.inf
+
+            if np.isnan(score):  # TODO
+                if self.maximize:
+                    score = -np.inf
+                else:
+                    score = np.inf
+            return score,  # Tuple
+
+        self._toolbox.register('evaluate', _train_and_eval_wrapped, X=X, y=y,
+                               train_func='train', test_func='predict',
+                               cv=self.cv, iid=self.iid,
+                               return_train_score=False, metrics=self.metrics,
+                               target_metric=self.target_metric)
+
         if self.verbose:
             print('--- Evolve in {0} possible combinations ---'.format(
                 np.prod(np.asarray([len(hp) for hp in self.hparam_space]))))
@@ -419,27 +443,12 @@ class GeneticAlgorithm(ModelSearchBase):
             print('Best individual is: {}\nwith fitness: {}'.format(
                 best_params_, best_score_))
 
-# import sklearn.datasets
-# import numpy as np
-# import random
-# data = sklearn.datasets.load_digits()
-# X = data["data"]
-# y = data["target"]
-# from sklearn.svm import SVC
-# from sklearn.model_selection import StratifiedKFold
-# paramgrid = {"kernel": ["rbf"],
-#              "C"     : np.logspace(-9, 9, num=25, base=10),
-#              "gamma" : np.logspace(-9, 9, num=25, base=10)}
-# random.seed(1)
-# from evolutionary_search import EvolutionaryAlgorithmSearchCV
-# cv = EvolutionaryAlgorithmSearchCV(estimator=SVC(),
-#                                    params=paramgrid,
-#                                    scoring="accuracy",
-#                                    cv=StratifiedKFold(n_splits=10),
-#                                    verbose=1,
-#                                    population_size=50,
-#                                    gene_mutation_prob=0.10,
-#                                    gene_crossover_prob=0.5,
-#                                    tournament_size=3,
-#                                    generations_number=10)
-# cv.fit(X, y)
+        # TODO TODO
+        #graph = networkx.DiGraph(self._hist.genealogy_tree)
+        #graph = graph.reverse()  # Make the graph top-down
+        # noinspection PyUnresolvedReferences
+        #colors = [self._toolbox.evaluate(self._hist.genealogy_history[i])[0]
+        #          for i in graph]
+        #networkx.draw(graph, node_color=colors)
+        #plt.savefig('gene_tree.png', dpi=300)
+        #plt.show()

@@ -74,3 +74,19 @@ def mean_per_class_accuracy(y_true, y_pred, n_classes=None, labels=None):
 
 
 # TODO IoU, MaP
+
+
+def root_mean_squared_error(y_true, y_pred):
+    """Root mean squared error"""
+    return np.sqrt(((y_true - y_pred) ** 2).mean())
+
+
+def normalized_root_mean_squared_error(y_true, y_pred, eps=1e-10):
+    """Normalized root mean squared error"""
+    return np.sqrt(np.sum((y_true - y_pred) ** 2) /
+                   (np.sum((y_true - y_true.mean()) ** 2) + eps))
+
+
+def mean_absolute_percent_error(y_true, y_pred, eps=1e-10):
+    """Mean absolute percent error"""
+    return (np.abs(y_true - y_pred) / (y_true + eps)).mean() * 100.

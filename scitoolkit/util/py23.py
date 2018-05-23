@@ -15,7 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
-from __future__ import absolute_import, division, unicode_literals, print_function
+from __future__ import (absolute_import, division, unicode_literals,
+                        print_function)
 from future.types import bytes, dict, int, range, str
 from future.builtins.misc import (ascii, chr, hex, input, next,
                                   oct, open, pow, round, super)

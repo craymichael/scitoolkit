@@ -33,6 +33,15 @@ LAZY_MODULES = [
 for m in LAZY_MODULES:
     lazy_import.lazy_module(m)
 
+from scitoolkit.system.sys_helper import sys_has_display
+
+import os
+if not os.name == 'nt' or not sys_has_display():  # TODO best place for this
+    import matplotlib as mpl
+    if mpl.get_backend() != 'agg':
+        mpl.use('Agg')
+    del mpl  # TODO...
+
 from scitoolkit.util.np_helper import (get_dtype, get_type, min_int_dtype, min_float_dtype,
                                        min_uint_dtype, min_complex_dtype, min_dtype, is_complex,
                                        is_float, is_int, is_uint)

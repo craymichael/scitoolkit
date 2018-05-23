@@ -18,7 +18,8 @@
 from scitoolkit.util.py23 import *  # py2/3 compatibility
 
 from sklearn.model_selection import (RepeatedKFold, RepeatedStratifiedKFold,
-                                     check_cv, train_test_split)
+                                     check_cv, train_test_split, KFold,
+                                     StratifiedKFold)
 from sklearn.utils.multiclass import type_of_target
 
 from scitoolkit.util.np_helper import is_int
@@ -28,7 +29,7 @@ __all__ = ['get_cv', 'train_test_split']
 
 
 def get_cv(cv=3, n_repeats=None, y=None, classification=None,
-           random_state=None):
+           random_state=None, shuffle=True):
     """Input checker utility for building a cross-validator
 
     Args:
@@ -51,6 +52,7 @@ def get_cv(cv=3, n_repeats=None, y=None, classification=None,
         random_state:
                    Random state to be used to generate random state for each
                    repetition.
+        shuffle:   Whether to shuffle.
 
     Returns:
         A cross-validator instance that generates the train/test splits via
@@ -60,6 +62,9 @@ def get_cv(cv=3, n_repeats=None, y=None, classification=None,
         cv = 3
     if n_repeats is None:
         n_repeats = 1
+    elif n_repeats > 1 and not shuffle:
+        raise ValueError('shuffle cannot be False with more than 1 CV '
+                         'repetition.')
 
     if is_int(cv, ignore_unsigned=False):
         # Infer classification if None and y is provided
@@ -71,11 +76,19 @@ def get_cv(cv=3, n_repeats=None, y=None, classification=None,
                 classification = False
         # Select appropriate CV type
         if classification:
-            return RepeatedStratifiedKFold(n_splits=cv, n_repeats=n_repeats,
-                                           random_state=random_state)
+            if n_repeats == 1:
+                return StratifiedKFold(n_splits=cv, shuffle=shuffle,
+                                       random_state=random_state)
+            else:
+                return RepeatedStratifiedKFold(n_splits=cv, n_repeats=n_repeats,
+                                               random_state=random_state)
         else:
-            return RepeatedKFold(n_splits=cv, n_repeats=n_repeats,
-                                 random_state=random_state)
+            if n_repeats == 1:
+                return KFold(n_splits=cv, shuffle=shuffle,
+                             random_state=random_state)
+            else:
+                return RepeatedKFold(n_splits=cv, n_repeats=n_repeats,
+                                     random_state=random_state)
 
     # For iterables and error-handling (rely on sklearn)
     if not hasattr(cv, 'split') or is_str(cv):

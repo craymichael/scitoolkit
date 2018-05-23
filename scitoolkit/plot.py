@@ -17,14 +17,6 @@
 # =====================================================================
 from scitoolkit.util.py23 import *  # py2/3 compatibility
 
-from scitoolkit.system.sys_helper import sys_has_display
-
-if not os.name == 'nt' or not sys_has_display():  # TODO best place for this
-    import matplotlib as mpl
-
-    mpl.use('Agg')
-    del mpl
-
 import matplotlib.pyplot as plt
 import numpy as np
 from functools import wraps

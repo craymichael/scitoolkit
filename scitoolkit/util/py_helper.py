@@ -74,6 +74,7 @@ def func_arg_names(func):
 
 def get_default_args(func):
     args, varargs, keywords, defaults, _, _, _ = getfullargspec(func)
+    defaults = defaults or []
     return dict(zip(args[-len(defaults):], defaults))
 
 

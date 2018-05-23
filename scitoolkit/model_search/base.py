@@ -27,6 +27,7 @@ from sklearn.externals.joblib import (Parallel, delayed, cpu_count, Memory,
                                       dump, load)
 from scitoolkit.system.file_system import (join, get_most_recent_in_dir,
                                            get_most_recent_k_in_dir)
+from scitoolkit.model_evaluation.cv import get_cv
 
 MODEL_DIR = 'models'
 SEARCH_DIR = 'search'
@@ -35,6 +36,10 @@ SEARCH_DIR = 'search'
 class ParamSpace(object):
     """
     {
+        # "ip=False" is passed every time
+        'ip': dict(
+            static=False
+        ),
         'lr': dict(
             lower=1e-4,
             upper=1,
@@ -69,10 +74,15 @@ class ParamSpace(object):
 
     def __init__(self, hparam_dict):
         hparam_space = OrderedDict()
+        static_params = {}
         dep_graph = _Graph()
 
         for k, v in six.iteritems(hparam_dict):
             assert isinstance(v, dict)
+
+            if 'static' in v:
+                static_params[k] = v['static']
+                continue
 
             if 'categories' in v:
                 hparam_space[k] = _CategoricalParam(**v)
@@ -96,12 +106,14 @@ class ParamSpace(object):
 
         self.hparam_space = hparam_space
         self.dep_graph = dep_graph
+        self.static_params = static_params
 
     def __iter__(self):
+        # All but static
         return six.itervalues(self.hparam_space)
 
     def __len__(self):
-        # The number of hyperparameters
+        # The number of hyperparameters (not including static)
         return len(self.hparam_space)
 
     def get_hparams(self, indices):
@@ -114,6 +126,7 @@ class ParamSpace(object):
             if hp[idx] in hp.conditional:  # TODO this is wrong and incomplete
                 # Record hyperparameters
                 invalid.extend(hp.conditional[hp[idx]])
+        hparams.update(self.static_params)
         return hparams
 
 
@@ -147,12 +160,13 @@ class _Node(object):
 
 class _Param(six.with_metaclass(abc.ABCMeta, object)):
     """"""
+
     def __init__(self, conditional):
         self.values = None
         self.conditional = conditional or {}
 
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def type(self):
         pass
 
@@ -167,15 +181,17 @@ class _ContinuousParam(_Param):
     """"""
 
     def __init__(self, lower, upper, n_points, spacing='linear', also=None,
-                 conditional=None):
+                 conditional=None, dtype=None):
         super(_ContinuousParam, self).__init__(conditional)
         self.lower = lower
         self.upper = upper
         self.spacing = spacing  # linear, log
         if self.spacing == 'linear':
-            self.values = np.linspace(lower, upper, num=n_points, endpoint=True)
+            self.values = np.linspace(lower, upper, num=n_points, endpoint=True,
+                                      dtype=dtype)
         elif self.spacing == 'log':
-            self.values = np.logspace(lower, upper, num=n_points, endpoint=True)
+            self.values = np.geomspace(lower, upper, num=n_points,
+                                       endpoint=True, dtype=dtype)
         else:
             raise ValueError('The spacing "{}" is '
                              'invalid.'.format(self.spacing))
@@ -210,11 +226,16 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
 
     def __init__(self, model, hparam_space, cv=None, n_jobs=1, iid=True,
                  maximize=True, ckpt_every=None, dirname=None, basename=None,
-                 keep_recent=5, verbose=0):
+                 keep_recent=5, verbose=1, metrics=None, target_metric=None,
+                 classification=True, time_series=False):
         # TODO move iid to scoring methodology? cv-only param I think...
         self.model = model
+        if isinstance(hparam_space, dict):
+            hparam_space = ParamSpace(hparam_space)
         self.hparam_space = hparam_space
         self.maximize = maximize
+        cv = get_cv(cv, n_repeats=None, y=None, classification=classification,
+                    shuffle=not time_series)
         self.cv = cv
         self.iid = iid
         self.best_model = None
@@ -231,14 +252,29 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
             basename = self.__class__.__name__
         self.dirname = dirname
         self.basename = basename
+        # Default metrics
+        if target_metric is None:
+            if classification:
+                target_metric = 'accuracy'
+            else:
+                target_metric = 'mean_squared_error'
+        if metrics is None:
+            metrics = [target_metric]
+        elif target_metric not in metrics:
+            metrics = list(metrics)
+            metrics.append(target_metric)
+        self.metrics = metrics
+        self.target_metric = target_metric
+        self.classification = classification
+        self.time_series = time_series
 
-    def search(self):
-        result = self._search()
-        self.save()
+    def search(self, X, y):
+        result = self._search(X, y)
+        # self.save()  # TODO things be broken...
         return result
 
     @abc.abstractmethod
-    def _search(self):
+    def _search(self, X, y):
         pass
 
     def save(self, filename=None, ext='pkl', timestamp=True, model_name=True):

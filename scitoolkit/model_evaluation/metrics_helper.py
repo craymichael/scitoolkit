@@ -34,7 +34,10 @@ import numpy as np  # NumPy
 from functools import wraps
 
 from scitoolkit.util.py_helper import is_str, reverse_dict, filter_unused_kwargs
-from scitoolkit.model_evaluation.metrics import mean_per_class_accuracy
+from scitoolkit.model_evaluation.metrics import (
+    mean_per_class_accuracy, root_mean_squared_error,
+    normalized_root_mean_squared_error, mean_absolute_percent_error
+)
 
 # Classification
 _METRICS_SCALAR_CLASSIFICATION = {
@@ -50,11 +53,12 @@ _METRICS_SCALAR_CLASSIFICATION = {
     'jaccard_similarity': sk_metrics.jaccard_similarity_score,
     'log': sk_metrics.log_loss,
     'matthews': sk_metrics.matthews_corrcoef,
-    'mean_per_class_accuracy': mean_per_class_accuracy,  # non-sk
     'precision': sk_metrics.precision_score,
     'recall': sk_metrics.recall_score,
     'roc_auc': sk_metrics.roc_auc_score,
     'zero_one': sk_metrics.zero_one_loss,
+    # non-sk
+    'mean_per_class_accuracy': mean_per_class_accuracy,
 }
 
 _METRICS_MISC_CLASSIFICATION = {
@@ -62,7 +66,8 @@ _METRICS_MISC_CLASSIFICATION = {
     'confusion_matrix': sk_metrics.confusion_matrix,
     'precision_recall_curve': sk_metrics.precision_recall_curve,  # \/
     'pr_curve': sk_metrics.precision_recall_curve,  # /\
-    'precision_recall_fscore_support': sk_metrics.precision_recall_fscore_support,
+    'precision_recall_fscore_support':
+        sk_metrics.precision_recall_fscore_support,
     'roc_curve': sk_metrics.roc_curve,
 }
 
@@ -77,6 +82,10 @@ _METRICS_SCALAR_REGRESSION = {
     'mean_squared_log_error': sk_metrics.mean_squared_log_error,
     'median_absolute_error': sk_metrics.median_absolute_error,
     'r2': sk_metrics.r2_score,
+    # non-sk
+    'root_mean_squared_error': root_mean_squared_error,
+    'normalized_root_mean_squared_error': normalized_root_mean_squared_error,
+    'mean_absolute_percent_error': mean_absolute_percent_error
 }
 
 _METRICS_MISC_REGRESSION = {}
@@ -87,7 +96,8 @@ _METRICS_REGRESSION.update(_METRICS_MISC_REGRESSION)
 # Multilabel
 _METRICS_SCALAR_MULTILABEL = {
     'coverage_error': sk_metrics.coverage_error,
-    'label_ranking_average_precision': sk_metrics.label_ranking_average_precision_score,
+    'label_ranking_average_precision':
+        sk_metrics.label_ranking_average_precision_score,
     'label_ranking_loss': sk_metrics.label_ranking_loss,
 }
 _METRICS_MISC_MULTILABEL = {}
@@ -124,7 +134,8 @@ _METRICS_SCALAR_CLUSTERING = {
 
 _METRICS_MISC_CLUSTERING = {
     'silhouette_samples': sk_metrics.silhouette_samples,
-    'homogeneity_completeness_v_measure': sk_metrics.homogeneity_completeness_v_measure,
+    'homogeneity_completeness_v_measure':
+        sk_metrics.homogeneity_completeness_v_measure,
 }
 
 _METRICS_CLUSTERING = _METRICS_SCALAR_CLUSTERING.copy()
@@ -156,7 +167,7 @@ _METRICS_SCALAR_PAIRWISE = {}
 _METRICS_MISC_PAIRWISE = {}
 # Update with dict of kernel names and functions.
 # >>> kernel_metrics()
-# {'additive_chi2': <function sklearn.metrics.pairwise.additive_chi2_kernel(X, Y=None)>,
+# {'additive_chi2': sklearn.metrics.pairwise.additive_chi2_kernel,
 #  'chi2': sklearn.metrics.pairwise.chi2_kernel,
 #  'linear': sklearn.metrics.pairwise.linear_kernel,
 #  'polynomial': sklearn.metrics.pairwise.polynomial_kernel,
@@ -179,7 +190,8 @@ _METRICS_MISC_PAIRWISE.update(sk_pairwise.kernel_metrics())
 # (Last Updated: sklearn.__version__ == 0.19.1)
 _METRICS_MISC_PAIRWISE.update(sk_pairwise.distance_metrics())
 # Update with paired distance names (prepend "paired_") and functions.
-# >>> {'paired_' + k: v for k, v in iteritems(sk_pairwise.PAIRED_DISTANCES.copy())}
+# >>> {'paired_' + k: v for k, v in
+# ...  iteritems(sk_pairwise.PAIRED_DISTANCES.copy())}
 # {'paired_cosine': sklearn.metrics.pairwise.paired_cosine_distances,
 #  'paired_euclidean': sklearn.metrics.pairwise.paired_euclidean_distances,
 #  'paired_l2': sklearn.metrics.pairwise.paired_euclidean_distances,
@@ -188,7 +200,8 @@ _METRICS_MISC_PAIRWISE.update(sk_pairwise.distance_metrics())
 #  'paired_cityblock': sklearn.metrics.pairwise.paired_manhattan_distances}
 # (Last Updated: sklearn.__version__ == 0.19.1)
 _METRICS_MISC_PAIRWISE.update(
-    {'paired_' + k: v for k, v in iteritems(sk_pairwise.PAIRED_DISTANCES.copy())}
+    {'paired_' + k: v for k, v in
+     iteritems(sk_pairwise.PAIRED_DISTANCES.copy())}
 )
 
 _METRICS_PAIRWISE = _METRICS_SCALAR_PAIRWISE.copy()

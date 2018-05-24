@@ -227,9 +227,10 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
     def __init__(self, model, hparam_space, cv=None, n_jobs=1, iid=True,
                  maximize=True, ckpt_every=None, dirname=None, basename=None,
                  keep_recent=5, verbose=1, metrics=None, target_metric=None,
-                 classification=True, time_series=False):
+                 classification=True, time_series=False, throw_out=0):
         # TODO move iid to scoring methodology? cv-only param I think...
         self.model = model
+        self.throw_out = throw_out  # TODO
         if isinstance(hparam_space, dict):
             hparam_space = ParamSpace(hparam_space)
         self.hparam_space = hparam_space

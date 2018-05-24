@@ -28,7 +28,7 @@ from sklearn.externals.joblib import Memory
 # TODO cache this function...
 def train_and_eval(X, y, model, train_func='train', test_func='predict',
                    cv=None, iid=True, return_train_score=False, metrics=None,
-                   target_metric=None, time_series=False):
+                   target_metric=None, time_series=False, eval_kwargs=None):
     if return_train_score:
         raise NotImplementedError
 
@@ -41,6 +41,8 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
         else:
             raise ValueError('"target_metric" must be provided if multiple '
                              'metrics specified.')
+
+    eval_kwargs = eval_kwargs or {}
 
     if type(X) is type(y) is tuple and len(X) == len(y) == 2:  # TODO this good?
         splits = [(X, y)]
@@ -55,6 +57,7 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
         test_func = getattr(model, test_func)
 
     test_score = 0.
+    test_scores = None
     n_test = 0
 
     for train_idx_or_xs, test_idx_or_ys in splits:
@@ -83,7 +86,8 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
             y_train_pred = train_func(X_train, y_train)
         if test_func is not None:
             y_test_pred = test_func(X_test)
-            test_scores = eval_metrics(metrics, y_test, y_test_pred)
+            test_scores = eval_metrics(metrics, y_test, y_test_pred,
+                                       **eval_kwargs)
 
             print(test_scores)  # TODO
 
@@ -101,7 +105,7 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
 
     test_score /= n_test
 
-    return test_score  # TODO other metrics?
+    return test_score, test_scores  # TODO
 
 
 class Model(six.with_metaclass(abc.ABCMeta, object)):

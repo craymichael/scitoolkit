@@ -588,8 +588,14 @@ def _get_metric_name_by_func(func):
 def eval_metrics(metric_names_or_funcs, *args,
                  remove_unused_kwargs=False, **kwargs):
     results = {}
+    throw_out = kwargs.pop('throw_out', 0)  # TODO throw out first x samples...
 
     for metric in metric_names_or_funcs:
+        if throw_out:  # TODO
+            args = list(args)
+            for i, arg in enumerate(args):  # TODO
+                arg = arg[throw_out:]  # TODO
+                args[i] = arg  # TODO :'(
         metric_value = eval_metric(metric, *args,
                                    remove_unused_kwargs=remove_unused_kwargs,
                                    **kwargs)

@@ -24,6 +24,10 @@ import random
 import networkx
 import matplotlib.pyplot as plt  # TODO plt...
 
+from datetime import datetime  # TODO
+import csv  # TODO
+from scitoolkit.system.file_system import valid_filename  # TODO
+
 from scitoolkit.model_search.base import ModelSearchBase
 from scitoolkit.model_evaluation.eval import train_and_eval
 from scitoolkit.util.parallel import map_jobs
@@ -266,6 +270,7 @@ class GeneticAlgorithm(ModelSearchBase):
 
     def __init__(self, *args, **kwargs):
         # GA params
+        self.log = kwargs.get('log', True)  # TODO...
         self.population_size = kwargs.pop('population_size', 50)
         self.gene_mutation_prob = kwargs.pop('gene_mutation_prob', 0.1)
         self.gene_crossover_prob = kwargs.pop('gene_crossover_prob', 0.5)
@@ -371,10 +376,11 @@ class GeneticAlgorithm(ModelSearchBase):
 
     def _search(self, X, y):
         def _train_and_eval_wrapped(individual, *args, **kwargs):
+            log = kwargs.pop('log')  # TODO
             hparams = _individual_to_hparams_grid(individual, self.hparam_space)
             model = self.model(**hparams)
             try:
-                score = train_and_eval(*args, model=model, **kwargs)
+                score, all_scores = train_and_eval(*args, model=model, **kwargs)
             # TODO score_on_err and shouldn't this be in base.py somewhere...
             except np.linalg.linalg.LinAlgError:  # TODO more exceptions...
                 # TODO log exceptions...
@@ -382,19 +388,42 @@ class GeneticAlgorithm(ModelSearchBase):
                     score = -np.inf
                 else:
                     score = np.inf
+                all_scores = {}
 
             if np.isnan(score):  # TODO
                 if self.maximize:
                     score = -np.inf
                 else:
                     score = np.inf
+
+            if log is not None:
+                row = [hparams[k]
+                       for k in self.hparam_space.hparam_space.keys()]
+                row.extend([all_scores.get(k) for k in self.metrics])
+                row.append(score)
+                row = list(map(str, row))
+                log.writerow(row)
             return score,  # Tuple
+
+        if self.log:
+            # TODO fix/move
+            f = open(valid_filename(self.__class__.__name__ +
+                                    self.model.__name__ +
+                                    str(datetime.now()) + '.csv'),
+                     'w', buffering=1)  # buffering=1: buffer line by line
+            writer = csv.writer(f)
+            writer.writerow(list(self.hparam_space.hparam_space.keys()) +
+                            self.metrics + [self.target_metric])
+        else:
+            f = None
+            writer = None
 
         self._toolbox.register('evaluate', _train_and_eval_wrapped, X=X, y=y,
                                train_func='train', test_func='predict',
                                cv=self.cv, iid=self.iid,
                                return_train_score=False, metrics=self.metrics,
-                               target_metric=self.target_metric)
+                               target_metric=self.target_metric, log=writer,
+                               eval_kwargs={'throw_out': self.throw_out})  # TODO throw_out...
 
         if self.verbose:
             print('--- Evolve in {0} possible combinations ---'.format(
@@ -443,12 +472,15 @@ class GeneticAlgorithm(ModelSearchBase):
             print('Best individual is: {}\nwith fitness: {}'.format(
                 best_params_, best_score_))
 
+        if self.log:
+            f.close()
+
         # TODO TODO
-        #graph = networkx.DiGraph(self._hist.genealogy_tree)
-        #graph = graph.reverse()  # Make the graph top-down
+        # graph = networkx.DiGraph(self._hist.genealogy_tree)
+        # graph = graph.reverse()  # Make the graph top-down
         # noinspection PyUnresolvedReferences
-        #colors = [self._toolbox.evaluate(self._hist.genealogy_history[i])[0]
+        # colors = [self._toolbox.evaluate(self._hist.genealogy_history[i])[0]
         #          for i in graph]
-        #networkx.draw(graph, node_color=colors)
-        #plt.savefig('gene_tree.png', dpi=300)
-        #plt.show()
+        # networkx.draw(graph, node_color=colors)
+        # plt.savefig('gene_tree.png', dpi=300)
+        # plt.show()

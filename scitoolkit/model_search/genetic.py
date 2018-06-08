@@ -26,6 +26,7 @@ import matplotlib.pyplot as plt  # TODO plt...
 
 from datetime import datetime  # TODO
 import csv  # TODO
+import os  # TODO
 from scitoolkit.system.file_system import valid_filename  # TODO
 
 from scitoolkit.model_search.base import ModelSearchBase
@@ -270,7 +271,7 @@ class GeneticAlgorithm(ModelSearchBase):
 
     def __init__(self, *args, **kwargs):
         # GA params
-        self.log = kwargs.get('log', True)  # TODO...
+        self.log = kwargs.pop('log', True)  # TODO SUPER...
         self.population_size = kwargs.pop('population_size', 50)
         self.gene_mutation_prob = kwargs.pop('gene_mutation_prob', 0.1)
         self.gene_crossover_prob = kwargs.pop('gene_crossover_prob', 0.5)
@@ -409,6 +410,7 @@ class GeneticAlgorithm(ModelSearchBase):
             # TODO fix/move
             f = open(valid_filename(self.__class__.__name__ +
                                     self.model.__name__ +
+                                    os.path.basename(str(self.log)) +
                                     str(datetime.now()) + '.csv'),
                      'w', buffering=1)  # buffering=1: buffer line by line
             writer = csv.writer(f)

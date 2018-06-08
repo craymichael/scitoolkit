@@ -20,7 +20,8 @@ from scitoolkit.util.py23 import *  # py2/3 compatibility
 import numpy as np
 
 
-def _check_ndarrays_and_squeeze(*arrays):  # TODO move to more general-purpose location
+def _check_ndarrays_and_squeeze(
+        *arrays):  # TODO move to more general-purpose location
     a = arrays[0].squeeze()
     shape = a.shape
     yield a
@@ -58,7 +59,8 @@ def mean_per_class_accuracy(y_true, y_pred, n_classes=None, labels=None):
         labels = np.arange(n_classes)
     elif len(labels) != n_classes:
         raise ValueError('Number of classes specified ({}) differs from '
-                         'number of labels ({}).'.format(n_classes, len(labels)))
+                         'number of labels ({}).'.format(n_classes,
+                                                         len(labels)))
     acc = 0.
     for c in labels:
         c_mask = (y_true == c)
@@ -87,6 +89,16 @@ def normalized_root_mean_squared_error(y_true, y_pred, eps=1e-10):
                    (np.sum((y_true - y_true.mean()) ** 2) + eps))
 
 
-def mean_absolute_percent_error(y_true, y_pred, eps=1e-10):
+def mean_absolute_percent_error(y_true, y_pred):
     """Mean absolute percent error"""
-    return (np.abs(y_true - y_pred) / (y_true + eps)).mean() * 100.
+    # eps=1e-10  # TODO...
+    # return (np.abs(y_true - y_pred) / (y_true + eps)).mean() * 100.
+
+    mask = y_true != 0
+
+    mape = (np.abs(y_true[mask] - y_pred[mask]) / y_true[mask]).mean() * 100.
+
+    if np.isnan(mape):
+        mape = 0.
+
+    return mape

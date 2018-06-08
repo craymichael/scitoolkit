@@ -154,7 +154,7 @@ def get_tmp_dir(suffix='', prefix='tmp', dir=None):
                 otherwise, a 'tmp' is used.
         dir:    If dir is specified, the file will be created in that directory;
                 otherwise, a default directory is used. The default directory is
-                chosen from a platform-dependent list, but the user of the
+                chosen from a infrastructure-dependent list, but the user of the
                 application can control the directory location by setting the
                 TMPDIR, TEMP or TMP environment variables. There is thus no
                 guarantee that the generated filename will have any nice properties,
@@ -197,7 +197,7 @@ def get_tmp_file(suffix='', prefix='tmp', dir=None, text=False):
                 otherwise, a 'tmp' is used.
         dir:    If dir is specified, the file will be created in that directory;
                 otherwise, a default directory is used. The default directory is
-                chosen from a platform-dependent list, but the user of the
+                chosen from a infrastructure-dependent list, but the user of the
                 application can control the directory location by setting the
                 TMPDIR, TEMP or TMP environment variables. There is thus no
                 guarantee that the generated filename will have any nice properties,

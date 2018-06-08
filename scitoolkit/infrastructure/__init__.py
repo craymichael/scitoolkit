@@ -17,7 +17,7 @@
 # =====================================================================
 from scitoolkit.util.py23 import *
 
-from scitoolkit.platform.test import TestCase
+from scitoolkit.infrastructure.test import TestCase
 
 
 __all__ = []

@@ -28,6 +28,7 @@ from sklearn.externals.joblib import (Parallel, delayed, cpu_count, Memory,
 from scitoolkit.system.file_system import (join, get_most_recent_in_dir,
                                            get_most_recent_k_in_dir)
 from scitoolkit.model_evaluation.cv import get_cv
+from scitoolkit.util.np_helper import is_int
 
 MODEL_DIR = 'models'
 SEARCH_DIR = 'search'
@@ -192,6 +193,9 @@ class _ContinuousParam(_Param):
         elif self.spacing == 'log':
             self.values = np.geomspace(lower, upper, num=n_points,
                                        endpoint=True, dtype=dtype)
+            if is_int(dtype, ignore_unsigned=False):
+                # TODO increase n_points to get enough points specified?
+                self.values = np.unique(self.values)
         else:
             raise ValueError('The spacing "{}" is '
                              'invalid.'.format(self.spacing))

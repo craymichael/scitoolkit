@@ -17,7 +17,7 @@
 # =====================================================================
 from scitoolkit.util.py23 import *  # py2/3 compatibility
 
-from scitoolkit.platform import test
+from scitoolkit.infrastructure import test
 from scitoolkit.model_evaluation import metrics
 import numpy as np
 

@@ -21,7 +21,7 @@ from six import string_types, iteritems, itervalues  # py2/3 compatibility
 import sys  # version info
 from copy import deepcopy
 from inspect import getfullargspec
-from types import ModuleType
+from types import ModuleType, MethodType
 
 
 def is_py3():
@@ -34,6 +34,10 @@ def is_py2():
 
 def is_str(s):
     return isinstance(s, string_types)
+
+
+def hasmethod(obj, name):
+    return hasattr(obj, name) and type(getattr(obj, name)) == MethodType
 
 
 def hashable(o):

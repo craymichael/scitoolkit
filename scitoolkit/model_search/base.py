@@ -275,7 +275,7 @@ class ModelSearchBase(six.with_metaclass(abc.ABCMeta, object)):
 
     def search(self, X, y):
         result = self._search(X, y)
-        # self.save()  # TODO things be broken...
+        self.save()  # TODO things be broken...
         return result
 
     @abc.abstractmethod

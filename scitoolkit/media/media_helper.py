@@ -20,12 +20,15 @@ from scitoolkit.util.py23 import *  # py2/3 compatibility
 import numpy as np
 import cv2
 import re
+import os
 from skimage.transform import resize as imresize
 
 from scitoolkit.system.sys_helper import sys_has_display
 
 CS_REGEX = re.compile(r'COLOR_RGB2([A-Z]+)$')
 ALL_CS = ['RGB', 'GAUSSIAN']
+# Find OpenCV version
+CV2_MAJOR_VER, CV2_MINOR_VER, CV2_SUBMINOR_VER = map(int, cv2.__version__.split('.')[:3])
 
 
 def _gen_valid_colorspaces():
@@ -123,32 +126,41 @@ def lin_contrast_stretch(im, px_max=255):
 
 
 def get_fps(vid_cap):
-    # Find OpenCV version
-    major_ver, minor_ver, subminor_ver = cv2.__version__.split('.')
-    if int(major_ver) < 3:
+    if CV2_MAJOR_VER < 3:
         fps = vid_cap.get(cv2.cv.CV_CAP_PROP_FPS)
     else:
         fps = vid_cap.get(cv2.CAP_PROP_FPS)
     return fps
 
 
-def play_video(frames, fps, out_file):
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+def play_video(frames, fps=None, dur=None, out_file=None, fourcc_code='MJPG'):
+    assert fps is not None or dur is not None, 'Either "fps" or "dur" must be specified'
+
     h, w = frames.shape[1:3]
-    out = cv2.VideoWriter(out_file, fourcc, fps, (w, h),
-                          isColor=frames.shape[-1] == 3)
-    wait_dur = int(1000. / fps)  # ms
+    if fps is not None:
+        wait_dur = int(1000. / fps)  # ms
+    else:
+        wait_dur = int(1000. * dur / len(frames))
+        fps = int(1000. / wait_dur)
+
+    if out_file:
+        fourcc = cv2.VideoWriter_fourcc(*fourcc_code)
+        out = cv2.VideoWriter(out_file, fourcc, fps, (w, h),
+                              isColor=int(len(frames.shape) == 4 and
+                                          frames.shape[-1] == 3))
+    else:
+        out = None
 
     for frame in frames:
-        out.write(frame)
-
-        if sys_has_display():
+        if out_file:
+            out.write(frame)
+        if 'DISPLAY' in os.environ.keys():
             cv2.imshow('frame', frame)
-
         if cv2.waitKey(wait_dur) & 0xFF == ord('q'):
             break
 
-    out.release()
+    if out_file:
+        out.release()
     cv2.destroyAllWindows()
 
 

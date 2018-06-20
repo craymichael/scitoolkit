@@ -1,5 +1,5 @@
 # =====================================================================
-# __init__.py - A scitoolkit file
+# base.py - A scitoolkit file
 # Copyright (C) 2018  Zach Carmichael
 #
 # This program is free software: you can redistribute it and/or modify
@@ -16,3 +16,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 # =====================================================================
 from scitoolkit.util.py23 import *
+
+import six
+import abc
+
+
+class BaseModel(six.with_metaclass(abc.ABCMeta, object)):
+    @abc.abstractmethod
+    def train(self):
+        pass
+
+    @abc.abstractmethod
+    def predict(self):
+        pass

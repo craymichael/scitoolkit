@@ -1,4 +1,6 @@
 .idea/
+*.csv
+search/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

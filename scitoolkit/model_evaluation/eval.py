@@ -17,20 +17,50 @@
 # =====================================================================
 from scitoolkit.util.py23 import *
 
-import six
-import abc
-from scitoolkit.util.py_helper import is_str
+from sklearn.base import BaseEstimator as SKBaseEstimator
+from sklearn.externals.joblib import Memory
+
+from scitoolkit.util.py_helper import is_str, hasmethod
 from scitoolkit.model_evaluation.metrics_helper import eval_metrics
 from scitoolkit.model_evaluation.cv import get_cv
-from sklearn.externals.joblib import Memory
+from scitoolkit.models.base import BaseModel
+
+DEFAULT_MODEL_TRAIN_FUNC = 'train'
+DEFAULT_MODEL_TEST_FUNC = 'test'
+DEFAULT_SKLEARN_TRAIN_FUNC = 'fit'
+DEFAULT_SKLEARN_TEST_PROBA_FUNC = 'predict_proba'
+DEFAULT_SKLEARN_TEST_FUNC = 'predict'
 
 
 # TODO cache this function...
-def train_and_eval(X, y, model, train_func='train', test_func='predict',
-                   cv=None, iid=True, return_train_score=False, metrics=None,
-                   target_metric=None, time_series=False, eval_kwargs=None):
+# TODO rename to something more fitting for function that can do EITHER training or evaluation only, or BOTH...
+def train_and_eval(X, y, model, train=True, test=True, train_func=None,
+                   test_func=None, cv=None, iid=True,
+                   return_train_score=False, metrics=None, target_metric=None,
+                   time_series=False, eval_kwargs=None):
+    """
+
+    Args:
+        X:
+        y:
+        model:
+        train:
+        test:
+        train_func:
+        test_func:
+        cv:
+        iid:
+        return_train_score:
+        metrics:
+        target_metric:
+        time_series:
+        eval_kwargs:
+
+    Returns:
+
+    """
     if return_train_score:
-        raise NotImplementedError
+        raise NotImplementedError  # TODO
 
     if not metrics or target_metric not in metrics:
         raise ValueError('Invalid specification of metrics for evaluation.')
@@ -44,12 +74,50 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
 
     eval_kwargs = eval_kwargs or {}
 
-    if type(X) is type(y) is tuple and len(X) == len(y) == 2:  # TODO this good?
+    if type(X) is type(y) is tuple and len(X) == len(y) == 2:  # TODO this good? for manual split specification...maybe require wrapping in object...
         splits = [(X, y)]
         cv = False
     else:
         cv = get_cv(cv)
         splits = cv.split(X, y)
+
+    # Check specified train/eval functions
+    if isinstance(model, SKBaseEstimator):  # TODO you also know that it has the {set, get}_params methods...
+        if train and train_func is None:
+            if hasmethod(model, DEFAULT_SKLEARN_TRAIN_FUNC):
+                train_func = getattr(model, DEFAULT_SKLEARN_TRAIN_FUNC)
+            else:
+                raise ValueError('Could not infer the train method from the '
+                                 'specified sklearn model. Please specify '
+                                 '"train_func" in order to train the model.')
+        if test and test_func is None:
+            if hasmethod(model, DEFAULT_SKLEARN_TEST_PROBA_FUNC):
+                test_func = getattr(model, DEFAULT_SKLEARN_TEST_PROBA_FUNC)
+            elif hasmethod(model, DEFAULT_SKLEARN_TEST_FUNC):
+                test_func = getattr(model, DEFAULT_SKLEARN_TEST_FUNC)
+            else:
+                raise ValueError('Could not infer the predict method from the '
+                                 'specified sklearn model. Please specify '
+                                 '"test_func" in order to test the model.')
+    elif isinstance(model, BaseModel):
+        raise NotImplementedError  # TODO
+    else:
+        if train and train_func is None:
+            # Take a stab at it
+            if hasmethod(model, DEFAULT_MODEL_TRAIN_FUNC):
+                train_func = getattr(model, DEFAULT_MODEL_TRAIN_FUNC)
+            else:
+                raise ValueError('Could not infer model train function: please '
+                                 'specify "train_func" in order to train the '
+                                 'model.')
+        if test and test_func is None:
+            # Take a stab at it
+            if hasmethod(model, DEFAULT_MODEL_TEST_FUNC):
+                test_func = getattr(model, DEFAULT_MODEL_TEST_FUNC)
+            else:
+                raise ValueError('Could not infer model test function: please '
+                                 'specify "test_func" in order to test the '
+                                 'model.')
 
     if is_str(train_func):
         train_func = getattr(model, train_func)
@@ -106,13 +174,3 @@ def train_and_eval(X, y, model, train_func='train', test_func='predict',
     test_score /= n_test
 
     return test_score, test_scores  # TODO
-
-
-class Model(six.with_metaclass(abc.ABCMeta, object)):
-    @abc.abstractmethod
-    def train(self):
-        pass
-
-    @abc.abstractmethod
-    def predict(self):
-        pass

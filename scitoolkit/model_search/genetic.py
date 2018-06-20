@@ -41,6 +41,9 @@ DEFAULT_GA_PARAMS = dict(
     lambda_=50
 )
 
+__all__ = ['eaSimple1Gen', 'eaMuCommaLambda1Gen', 'eaMuPlusLambda1Gen',
+           'GeneticAlgorithm']
+
 
 def _init_individual(cls, hparam_space):
     return cls(random.randint(0, len(hp) - 1) for hp in hparam_space)
@@ -270,8 +273,23 @@ class GeneticAlgorithm(ModelSearchBase):
     """
 
     def __init__(self, *args, **kwargs):
+        """
+
+        Args:
+            log:
+            population_size:
+            gene_mutation_prob:
+            gene_crossover_prob:
+            tournament_size:
+            num_generations:
+            n_jobs:
+            grid:
+            score_on_err:
+            ga_func:
+            ...see super for others...
+        """
         # GA params
-        self.log = kwargs.pop('log', True)  # TODO SUPER...
+        self.log = kwargs.pop('log', True)  # TODO move to SUPER...
         self.population_size = kwargs.pop('population_size', 50)
         self.gene_mutation_prob = kwargs.pop('gene_mutation_prob', 0.1)
         self.gene_crossover_prob = kwargs.pop('gene_crossover_prob', 0.5)
@@ -283,10 +301,12 @@ class GeneticAlgorithm(ModelSearchBase):
             raise NotImplementedError
         # TODO i forgot what this is...
         self.score_on_err = kwargs.pop('score_on_err', 'raise')
+
         # Wrap ga_func
         ga_func = kwargs.pop('ga_func', eaSimple1Gen)
         ga_func_args = {}
         ga_func_defaults = get_default_args(ga_func)
+
         for arg_name in func_arg_names(ga_func):
             if arg_name not in {'population', 'toolbox', 'gen'}:
                 if arg_name in kwargs:
@@ -302,10 +322,8 @@ class GeneticAlgorithm(ModelSearchBase):
                                      '`{}`.'.format(ga_func, arg_name))
                 ga_func_args[arg_name] = arg_val
 
-        def ga_func_wrapped(population, toolbox, gen):
-            return ga_func(population, toolbox, gen=gen, **ga_func_args)
-
-        self._ga_func = ga_func_wrapped
+        self._ga_func = ga_func  # _wrap_ga_func
+        self._ga_func_args = ga_func_args
 
         super(GeneticAlgorithm, self).__init__(*args, **kwargs)
 
@@ -379,6 +397,8 @@ class GeneticAlgorithm(ModelSearchBase):
         def _train_and_eval_wrapped(individual, *args, **kwargs):
             log = kwargs.pop('log')  # TODO
             hparams = _individual_to_hparams_grid(individual, self.hparam_space)
+            # TODO this will become an issue for other models...(sklearn...)
+            # TODO move to parent class or ext. method (e.g. _inst_model_with_hparams)
             model = self.model(**hparams)
             try:
                 score, all_scores = train_and_eval(*args, model=model, **kwargs)
@@ -421,7 +441,7 @@ class GeneticAlgorithm(ModelSearchBase):
             writer = None
 
         self._toolbox.register('evaluate', _train_and_eval_wrapped, X=X, y=y,
-                               train_func='train', test_func='predict',
+                               train_func=None, test_func=None,  # TODO accept these args in init
                                cv=self.cv, iid=self.iid,
                                return_train_score=False, metrics=self.metrics,
                                target_metric=self.target_metric, log=writer,
@@ -441,7 +461,8 @@ class GeneticAlgorithm(ModelSearchBase):
             self.gen = gen
             # Compute 1 generation of GA
             offspring, population = self._ga_func(self._pop, self._toolbox,
-                                                  gen=self.gen)
+                                                  gen=self.gen,
+                                                  **self._ga_func_args)
 
             # Evaluate the individuals with an invalid fitness
             invalid_ind = [ind for ind in offspring if not ind.fitness.valid]

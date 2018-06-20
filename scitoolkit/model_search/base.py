@@ -23,8 +23,9 @@ import abc
 import os
 from datetime import datetime
 from collections import OrderedDict
-from sklearn.externals.joblib import (Parallel, delayed, cpu_count, Memory,
-                                      dump, load)
+from sklearn.externals.joblib import Parallel, delayed, cpu_count, Memory #dump, load)
+import dill
+
 from scitoolkit.system.file_system import (join, get_most_recent_in_dir,
                                            get_most_recent_k_in_dir)
 from scitoolkit.model_evaluation.cv import get_cv

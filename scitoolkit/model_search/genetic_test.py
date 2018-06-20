@@ -27,7 +27,8 @@ from scitoolkit.infrastructure import test
 class GeneticAlgorithmTestCase(test.TestCase):
 
     def test_integration_svm(self):
-        X, y = load_iris(return_X_y=True)
+        iris = load_iris()
+        X, y = iris.data, iris.target
 
         hparam_space = {}
 

@@ -23,7 +23,7 @@ import abc
 import os
 from datetime import datetime
 from collections import OrderedDict
-from sklearn.externals.joblib import Parallel, delayed, cpu_count, Memory #dump, load)
+from sklearn.externals.joblib import Parallel, delayed, cpu_count, Memory  # dump, load
 import dill
 
 from scitoolkit.system.file_system import (join, get_most_recent_in_dir,
@@ -80,7 +80,8 @@ class ParamSpace(object):
         dep_graph = _Graph()
 
         for k, v in six.iteritems(hparam_dict):
-            assert isinstance(v, dict)
+            assert isinstance(v, dict), ('Value for hyperparameter key, {}, must be type dict. '
+                                         'Received: {}'.format(k, type(v)))
 
             if 'static' in v:
                 static_params[k] = v['static']

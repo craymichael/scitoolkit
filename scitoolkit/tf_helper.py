@@ -20,6 +20,7 @@ from scitoolkit.util.py23 import *  # py2/3 compatibility
 import tensorflow as tf
 from keras import backend as k_bkend
 
+# TODO: https://github.com/deepmind/graph_nets/
 # https://stackoverflow.com/questions/40690598/can-keras-with-tensorflow-backend-be-forced-to-use-cpu-or-gpu-at-will
 GPU = True
 num_cores = 4
